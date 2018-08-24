@@ -1,3 +1,3 @@
 A test
 
-that has been updated
+that has been updated!
