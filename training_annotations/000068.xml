@@ -1,0 +1,38 @@
+<annotation>
+	<folder>images</folder>
+	<filename>000068.jpg</filename>
+	<path>C:\Users\Ajinkya\Documents\Python Scripts_disk\Formula Student\KTH FS Video Annotation\images\000068.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1178</width>
+		<height>780</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>Cone</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>150</xmin>
+			<ymin>631</ymin>
+			<xmax>244</xmax>
+			<ymax>777</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>Cone</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>569</xmin>
+			<ymin>557</ymin>
+			<xmax>593</xmax>
+			<ymax>603</ymax>
+		</bndbox>
+	</object>
+</annotation>
