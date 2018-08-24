@@ -11,28 +11,21 @@
 # In[1]:
 
 
-from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, TerminateOnNaN, CSVLogger
-from keras import backend as K
-from keras.models import load_model
 from math import ceil
+
 import numpy as np
-from matplotlib import pyplot as plt
-
-from models.keras_ssd7 import build_model
-from keras_loss_function.keras_ssd_loss import SSDLoss
-from keras_layers.keras_layer_AnchorBoxes import AnchorBoxes
-from keras_layers.keras_layer_DecodeDetections import DecodeDetections
-from keras_layers.keras_layer_DecodeDetectionsFast import DecodeDetectionsFast
-
-from ssd_encoder_decoder.ssd_input_encoder import SSDInputEncoder
-from ssd_encoder_decoder.ssd_output_decoder import decode_detections, decode_detections_fast
-
-from data_generator.object_detection_2d_data_generator import DataGenerator
-from data_generator.object_detection_2d_misc_utils import apply_inverse_transforms
-from data_generator.data_augmentation_chain_variable_input_size import DataAugmentationVariableInputSize
 from data_generator.data_augmentation_chain_constant_input_size import DataAugmentationConstantInputSize
-from data_generator.data_augmentation_chain_original_ssd import SSDDataAugmentation
+from data_generator.object_detection_2d_data_generator import DataGenerator
+from keras import backend as K
+from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, CSVLogger
+from keras.optimizers import Adam
+from keras_loss_function.keras_ssd_loss import SSDLoss
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot as plt
+from models.keras_ssd7 import build_model
+from ssd_encoder_decoder.ssd_input_encoder import SSDInputEncoder
+from ssd_encoder_decoder.ssd_output_decoder import decode_detections
 
 #get_ipython().magic(u'matplotlib inline')
 
@@ -56,12 +49,12 @@ from data_generator.data_augmentation_chain_original_ssd import SSDDataAugmentat
 # In[4]:
 
 
-img_height = 720 # Height of the input images
-img_width = 1280 # Width of the input images
+img_height = 336  # 720 # Height of the input images
+img_width = 630 #  1280 # Width of the input images
 img_channels = 3 # Number of color channels of the input images
 intensity_mean = 127.5 # Set this to your preference (maybe `None`). The current settings transform the input pixel values to the interval `[-1,1]`.
 intensity_range = 127.5 # Set this to your preference (maybe `None`). The current settings transform the input pixel values to the interval `[-1,1]`.
-n_classes = 5 # Number of positive classes
+n_classes = 20 # Conecase: 5 # Number of positive classes
 scales = [0.08, 0.16, 0.32, 0.64, 0.96] # An explicit list of anchor box scaling factors. If this is passed, it will override `min_scale` and `max_scale`.
 aspect_ratios = [0.5, 1.0, 2.0] # The list of aspect ratios for the anchor boxes
 two_boxes_for_ar1 = True # Whether or not you want to generate two anchor boxes for aspect ratio 1
@@ -73,18 +66,18 @@ normalize_coords = True # Whether or not the model is supposed to use coordinate
 
 
 # ## 2. Build or load the model
-# 
+#
 # You will want to execute either of the two code cells in the subsequent two sub-sections, not both.
 
 # ### 2.1 Create a new model
-# 
+#
 # If you want to create a new model, this is the relevant section for you. If you want to load a previously saved model, skip ahead to section 2.2.
-# 
+#
 # The code cell below does the following things:
 # 1. It calls the function `build_model()` to build the model.
 # 2. It optionally loads some weights into the model.
 # 3. It then compiles the model for the training. In order to do so, we're defining an optimizer (Adam) and a loss function (SSDLoss) to be passed to the `compile()` method.
-# 
+#
 # `SSDLoss` is a custom Keras loss function that implements the multi-task log loss for classification and smooth L1 loss for localization. `neg_pos_ratio` and `alpha` are set as in the paper.
 
 # In[5]:
@@ -123,6 +116,7 @@ ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
 model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 
 
+"""
 # ### 2.2 Load a saved model
 # 
 # If you have previously created and saved a model and would now like to load it, simply execute the next code cell. The only thing you need to do is to set the path to the saved model HDF5 file that you would like to load.
@@ -145,23 +139,24 @@ model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 # model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
 #                                                'compute_loss': ssd_loss.compute_loss})
 
+"""
 
 # ## 3. Set up the data generators for the training
-# 
+#
 # The code cells below set up data generators for the training and validation datasets to train the model. You will have to set the file paths to your dataset. Depending on the annotations format of your dataset, you might also have to switch from the CSV parser to the XML or JSON parser, or you might have to write a new parser method in the `DataGenerator` class that can handle whatever format your annotations are in. The [README](https://github.com/pierluigiferrari/ssd_keras/blob/master/README.md) of this repository provides a summary of the design of the `DataGenerator`, which should help you in case you need to write a new parser or adapt one of the existing parsers to your needs.
-# 
+#
 # Note that the generator provides two options to speed up the training. By default, it loads the individual images for a batch from disk. This has two disadvantages. First, for compressed image formats like JPG, this is a huge computational waste, because every image needs to be decompressed again and again every time it is being loaded. Second, the images on disk are likely not stored in a contiguous block of memory, which may also slow down the loading process. The first option that `DataGenerator` provides to deal with this is to load the entire dataset into memory, which reduces the access time for any image to a negligible amount, but of course this is only an option if you have enough free memory to hold the whole dataset. As a second option, `DataGenerator` provides the possibility to convert the dataset into a single HDF5 file. This HDF5 file stores the images as uncompressed arrays in a contiguous block of memory, which dramatically speeds up the loading time. It's not as good as having the images in memory, but it's a lot better than the default option of loading them from their compressed JPG state every time they are needed. Of course such an HDF5 dataset may require significantly more disk space than the compressed images. You can later load these HDF5 datasets directly in the constructor.
-# 
+#
 # Set the batch size to to your preference and to what your GPU memory allows, it's not the most important hyperparameter. The Caffe implementation uses a batch size of 32, but smaller batch sizes work fine, too.
-# 
+#
 # The `DataGenerator` itself is fairly generic. I doesn't contain any data augmentation or bounding box encoding logic. Instead, you pass a list of image transformations and an encoder for the bounding boxes in the `transformations` and `label_encoder` arguments of the data generator's `generate()` method, and the data generator will then apply those given transformations and the encoding to the data. Everything here is preset already, but if you'd like to learn more about the data generator and its data augmentation capabilities, take a look at the detailed tutorial in [this](https://github.com/pierluigiferrari/data_generator_object_detection_2d) repository.
-# 
+#
 # The image processing chain defined further down in the object named `data_augmentation_chain` is just one possibility of what a data augmentation pipeline for unform-size images could look like. Feel free to put together other image processing chains, you can use the `DataAugmentationConstantInputSize` class as a template. Or you could use the original SSD data augmentation pipeline by instantiting an `SSDDataAugmentation` object and passing that to the generator instead. This procedure is not exactly efficient, but it evidently produces good results on multiple datasets.
-# 
+#
 # An `SSDInputEncoder` object, `ssd_input_encoder`, is passed to both the training and validation generators. As explained above, it matches the ground truth labels to the model's anchor boxes and encodes the box coordinates into the format that the model needs.
 
 # ### Note:
-# 
+#
 # The example setup below was used to train SSD7 on two road traffic datasets released by [Udacity](https://github.com/udacity/self-driving-car/tree/master/annotations) with around 20,000 images in total and 5 object classes (car, truck, pedestrian, bicyclist, traffic light), although the vast majority of the objects are cars. The original datasets have a constant image size of 1200x1920 RGB. I consolidated the two datasets, removed a few bad samples (although there are probably many more), and resized the images to 300x480 RGB, i.e. to one sixteenth of the original image size. In case you'd like to train a model on the same dataset, you can download the consolidated and resized dataset I used [here](https://drive.google.com/open?id=1tfBFavijh4UTG4cGqIKwhcklLXUDuY0D) (about 900 MB).
 
 # In[14]:
@@ -179,11 +174,12 @@ val_dataset = DataGenerator(load_images_into_memory=False, hdf5_dataset_path=Non
 # TODO: Set the paths to your dataset here.
 
 # Images
-images_dir = "images"
 # [Ajinkya]: add training and validation set for xml
-training_set_filename = "training_set_filename.txt"
-validation_set_filename = "validation_set_filename.txt"
-annotation_dir = "annotations"
+
+images_dir = "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/JPEGImages"  # Conecase: "../images"
+training_set_filename = "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/ImageSets/Layout/train.txt"  # Conecase: "../training_set_filename.txt"
+validation_set_filename =  "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/ImageSets/Layout/val.txt"  # Conecase: "../validation_set_filename.txt"
+annotation_dir = "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/Annotations" # Conecase:"../training_annotations"
 
 # Ground truth
 # train_labels_filename = '../../datasets/udacity_driving_datasets/labels_train.csv'
@@ -199,6 +195,33 @@ annotation_dir = "annotations"
 #                      input_format=['image_name', 'xmin', 'xmax', 'ymin', 'ymax', 'class_id'],
 #                      include_classes='all')
 
+classes = ['background',
+           'aeroplane', 'bicycle', 'bird', 'boat',
+           'bottle', 'bus', 'car', 'cat',
+           'chair', 'cow', 'diningtable', 'dog',
+           'horse', 'motorbike', 'person', 'pottedplant',
+           'sheep', 'sofa', 'train', 'tvmonitor']
+
+train_dataset.parse_xml(images_dirs=[images_dir],
+                  image_set_filenames=[training_set_filename],
+                  annotations_dirs=[annotation_dir],
+                  classes=classes,
+                  include_classes='all',
+                  exclude_truncated=False,
+                  exclude_difficult=True,
+                  ret=False)
+
+val_dataset.parse_xml(images_dirs=[images_dir],
+                  image_set_filenames=[validation_set_filename],
+                  annotations_dirs=[annotation_dir],
+                  classes=classes,
+                  include_classes='all',
+                  exclude_truncated=False,
+                  exclude_difficult=True,
+                  ret=False)
+
+'''
+Conecase:
 # [Ajinkya]: Using the XML parser instead
 train_dataset.parse_xml(images_dirs=[images_dir],
                        image_set_filenames=[training_set_filename],
@@ -219,6 +242,7 @@ val_dataset.parse_xml(images_dirs=[images_dir],
                        exclude_difficult=False,
                        ret=False,
                        verbose=True)
+'''
 
 # Optional: Convert the dataset into an HDF5 dataset. This will require more disk space, but will
 # speed up the training. Doing this is not relevant in case you activated the `load_images_into_memory`
@@ -322,7 +346,8 @@ val_generator = val_dataset.generate(batch_size=batch_size,
 # Define model callbacks.
 
 # TODO: Set the filepath under which you want to save the weights.
-model_checkpoint = ModelCheckpoint(filepath='ssd7_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
+weightPath = "../weightVoc"
+model_checkpoint = ModelCheckpoint(filepath=str(weightPath+'ssd7_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5'),
                                    monitor='val_loss',
                                    verbose=1,
                                    save_best_only=True,
@@ -330,7 +355,7 @@ model_checkpoint = ModelCheckpoint(filepath='ssd7_epoch-{epoch:02d}_loss-{loss:.
                                    mode='auto',
                                    period=1)
 
-csv_logger = CSVLogger(filename='ssd7_training_log.csv',
+csv_logger = CSVLogger(filename=str(weightPath+'ssd7_training_log.csv'),
                        separator=',',
                        append=True)
 
