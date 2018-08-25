@@ -477,6 +477,7 @@ class DataGenerator:
 
                 if not annotations_dir is None:
                     # Parse the XML file for this image.
+
                     with open(os.path.join(annotations_dir, image_id + '.xml')) as f:
                         soup = BeautifulSoup(f, 'xml')
 

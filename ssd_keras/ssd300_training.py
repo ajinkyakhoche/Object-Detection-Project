@@ -17,6 +17,8 @@ from keras import backend as K
 from keras.models import load_model
 from math import ceil
 import numpy as np
+import matplotlib
+matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
 from models.keras_ssd300 import ssd_300
@@ -80,20 +82,19 @@ normalize_coords = True
 #
 # You will want to execute either of the two code cells in the subsequent two sub-sections, not both.
 
-'''
 # ### 2.1 Create a new model and load trained VGG-16 weights into it (or trained SSD weights)
-# 
+#
 # If you want to create a new SSD300 model, this is the relevant section for you. If you want to load a previously saved SSD300 model, skip ahead to section 2.2.
-# 
+#
 # The code cell below does the following things:
 # 1. It calls the function `ssd_300()` to build the model.
 # 2. It then loads the weights file that is found at `weights_path` into the model. You could load the trained VGG-16 weights or you could load the weights of a trained model. If you want to reproduce the original SSD training, load the pre-trained VGG-16 weights. In any case, you need to set the path to the weights file you want to load on your local machine. Download links to all the trained weights are provided in the [README](https://github.com/pierluigiferrari/ssd_keras/blob/master/README.md) of this repository.
 # 3. Finally, it compiles the model for the training. In order to do so, we're defining an optimizer (Adam) and a loss function (SSDLoss) to be passed to the `compile()` method.
-# 
+#
 # Normally, the optimizer of choice would be Adam (commented out below), but since the original implementation uses plain SGD with momentum, we'll do the same in order to reproduce the original training. Adam is generally the superior optimizer, so if your goal is not to have everything exactly as in the original training, feel free to switch to Adam. You might need to adjust the learning rate scheduler below slightly in case you use Adam.
-# 
+#
 # Note that the learning rate that is being set here doesn't matter, because further below we'll pass a learning rate scheduler to the training function, which will overwrite any learning rate set here, i.e. what matters are the learning rates that are defined by the learning rate scheduler.
-# 
+#
 # `SSDLoss` is a custom Keras loss function that implements the multi-task that consists of a log loss for classification and a smooth L1 loss for localization. `neg_pos_ratio` and `alpha` are set as in the paper.
 
 # In[4]:
@@ -120,7 +121,7 @@ model = ssd_300(image_size=(img_height, img_width, img_channels),
 # 2: Load some weights into the model.
 
 # TODO: Set the path to the weights you want to load.
-weights_path = 'path/to/VGG_ILSVRC_16_layers_fc_reduced.h5'
+weights_path = '../SSD300 training data/VGG_ILSVRC_16_layers_fc_reduced.h5'
 
 model.load_weights(weights_path, by_name=True)
 
@@ -128,12 +129,13 @@ model.load_weights(weights_path, by_name=True)
 #    If you want to follow the original Caffe implementation, use the preset SGD
 #    optimizer, otherwise I'd recommend the commented-out Adam optimizer.
 
-#adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-sgd = SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False)
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+# sgd = SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False)
 
 ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
 
-model.compile(optimizer=sgd, loss=ssd_loss.compute_loss)
+model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
+#model.compile(optimizer=sgd, loss=ssd_loss.compute_loss)
 
 
 '''
@@ -161,10 +163,11 @@ model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
                                                'compute_loss': ssd_loss.compute_loss})
 
 
+'''
 # ## 3. Set up the data generators for the training
-# 
+#
 # The code cells below set up the data generators for the training and validation datasets to train the model. The settings below reproduce the original SSD training on Pascal VOC 2007 `trainval` plus 2012 `trainval` and validation on Pascal VOC 2007 `test`.
-# 
+#
 # The only thing you need to change here are the filepaths to the datasets on your local machine. Note that parsing the labels from the XML annotations files can take a while.
 # 
 # Note that the generator provides two options to speed up the training. By default, it loads the individual images for a batch from disk. This has two disadvantages. First, for compressed image formats like JPG, this is a huge computational waste, because every image needs to be decompressed again and again every time it is being loaded. Second, the images on disk are likely not stored in a contiguous block of memory, which may also slow down the loading process. The first option that `DataGenerator` provides to deal with this is to load the entire dataset into memory, which reduces the access time for any image to a negligible amount, but of course this is only an option if you have enough free memory to hold the whole dataset. As a second option, `DataGenerator` provides the possibility to convert the dataset into a single HDF5 file. This HDF5 file stores the images as uncompressed arrays in a contiguous block of memory, which dramatically speeds up the loading time. It's not as good as having the images in memory, but it's a lot better than the default option of loading them from their compressed JPG state every time they are needed. Of course such an HDF5 dataset may require significantly more disk space than the compressed images (around 9 GB total for Pascal VOC 2007 `trainval` plus 2012 `trainval` and another 2.6 GB for 2007 `test`). You can later load these HDF5 datasets directly in the constructor.
@@ -194,21 +197,21 @@ val_dataset = DataGenerator(load_images_into_memory=False, hdf5_dataset_path=Non
 # TODO: Set the paths to the datasets here.
 
 # The directories that contain the images.
-VOC_2007_images_dir      = '../../datasets/VOCdevkit/VOC2007/JPEGImages/'
-VOC_2012_images_dir      = '../../datasets/VOCdevkit/VOC2012/JPEGImages/'
+VOC_2007_images_dir      = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/JPEGImages/'
+VOC_2012_images_dir      = '../SSD300 training data/VOCtrainval2012/VOCdevkit/VOC2012/JPEGImages/'
 
 # The directories that contain the annotations.
-VOC_2007_annotations_dir      = '../../datasets/VOCdevkit/VOC2007/Annotations/'
-VOC_2012_annotations_dir      = '../../datasets/VOCdevkit/VOC2012/Annotations/'
+VOC_2007_annotations_dir      = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/Annotations/'
+VOC_2012_annotations_dir      = '../SSD300 training data/VOCtrainval2012/VOCdevkit/VOC2012/Annotations/'
 
 # The paths to the image sets.
-VOC_2007_train_image_set_filename    = '../../datasets/VOCdevkit/VOC2007/ImageSets/Main/train.txt'
-VOC_2012_train_image_set_filename    = '../../datasets/VOCdevkit/VOC2012/ImageSets/Main/train.txt'
-VOC_2007_val_image_set_filename      = '../../datasets/VOCdevkit/VOC2007/ImageSets/Main/val.txt'
-VOC_2012_val_image_set_filename      = '../../datasets/VOCdevkit/VOC2012/ImageSets/Main/val.txt'
-VOC_2007_trainval_image_set_filename = '../../datasets/VOCdevkit/VOC2007/ImageSets/Main/trainval.txt'
-VOC_2012_trainval_image_set_filename = '../../datasets/VOCdevkit/VOC2012/ImageSets/Main/trainval.txt'
-VOC_2007_test_image_set_filename     = '../../datasets/VOCdevkit/VOC2007/ImageSets/Main/test.txt'
+VOC_2007_train_image_set_filename    = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/ImageSets/Main/train.txt'
+VOC_2012_train_image_set_filename    = '../SSD300 training data/VOCtrainval2012/VOCdevkit/VOC2012/ImageSets/Main/train.txt'
+VOC_2007_val_image_set_filename      = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/ImageSets/Main/val.txt'
+VOC_2012_val_image_set_filename      = '../SSD300 training data/VOCtrainval2012/VOCdevkit/VOC2012/ImageSets/Main/val.txt'
+VOC_2007_trainval_image_set_filename = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/ImageSets/Main/trainval.txt'
+VOC_2012_trainval_image_set_filename = '../SSD300 training data/VOCtrainval2012/VOCdevkit/VOC2012/ImageSets/Main/trainval.txt'
+VOC_2007_test_image_set_filename     = '../SSD300 training data/VOCtest2007/VOCdevkit/VOC2007/ImageSets/Main/test.txt'
 
 # The XML parser needs to now what object class names to look for and in which order to map them to integers.
 classes = ['background',
@@ -231,7 +234,7 @@ train_dataset.parse_xml(images_dirs=[VOC_2007_images_dir,
                         ret=False)
 
 val_dataset.parse_xml(images_dirs=[VOC_2007_images_dir],
-                      image_set_filenames=[VOC_2007_test_image_set_filename],
+                      image_set_filenames=[VOC_2007_val_image_set_filename],
                       annotations_dirs=[VOC_2007_annotations_dir],
                       classes=classes,
                       include_classes='all',
@@ -260,7 +263,7 @@ val_dataset.create_hdf5_dataset(file_path='dataset_pascal_voc_07_test.h5',
 
 # 3: Set the batch size.
 
-batch_size = 32 # Change the batch size if you like, or if you run into GPU memory issues.
+batch_size = 5  # 32 # Change the batch size if you like, or if you run into GPU memory issues.
 
 # 4: Set the image transformations for pre-processing and data augmentation options.
 
@@ -390,7 +393,7 @@ callbacks = [model_checkpoint,
 
 # If you're resuming a previous training, set `initial_epoch` and `final_epoch` accordingly.
 initial_epoch   = 0
-final_epoch     = 120
+final_epoch     = 20 # 120
 steps_per_epoch = 1000
 
 history = model.fit_generator(generator=train_generator,
