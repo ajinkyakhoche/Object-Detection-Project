@@ -11,25 +11,22 @@
 # In[ ]:
 
 
-from keras.optimizers import Adam, SGD
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler, TerminateOnNaN, CSVLogger
-from keras import backend as K
-from keras.models import load_model
 from math import ceil
-import numpy as np
+
 import matplotlib
+import numpy as np
+from keras import backend as K
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler, TerminateOnNaN, CSVLogger
+from keras.optimizers import Adam
+
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
 from models.keras_ssd300 import ssd_300
 from keras_loss_function.keras_ssd_loss import SSDLoss
-from keras_layers.keras_layer_AnchorBoxes import AnchorBoxes
-from keras_layers.keras_layer_DecodeDetections import DecodeDetections
-from keras_layers.keras_layer_DecodeDetectionsFast import DecodeDetectionsFast
-from keras_layers.keras_layer_L2Normalization import L2Normalization
 
 from ssd_encoder_decoder.ssd_input_encoder import SSDInputEncoder
-from ssd_encoder_decoder.ssd_output_decoder import decode_detections, decode_detections_fast
+from ssd_encoder_decoder.ssd_output_decoder import decode_detections
 
 from data_generator.object_detection_2d_data_generator import DataGenerator
 from data_generator.object_detection_2d_geometric_ops import Resize
@@ -121,7 +118,7 @@ model = ssd_300(image_size=(img_height, img_width, img_channels),
 # 2: Load some weights into the model.
 
 # TODO: Set the path to the weights you want to load.
-weights_path = '../SSD300 training data/VGG_ILSVRC_16_layers_fc_reduced.h5'
+weights_path = '../ConeData/VGG_ILSVRC_16_layers_fc_reduced.h5'
 
 model.load_weights(weights_path, by_name=True)
 
@@ -195,6 +192,8 @@ val_dataset = DataGenerator(load_images_into_memory=False, hdf5_dataset_path=Non
 # 2: Parse the image and label lists for the training and validation datasets. This can take a while.
 
 # TODO: Set the paths to the datasets here.
+'''
+For Pascal VOC data sets: 
 
 # The directories that contain the images.
 VOC_2007_images_dir      = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/JPEGImages/'
@@ -212,7 +211,26 @@ VOC_2012_val_image_set_filename      = '../SSD300 training data/VOCtrainval2012/
 VOC_2007_trainval_image_set_filename = '../SSD300 training data/VOCtrainval2007/VOCdevkit/VOC2007/ImageSets/Main/trainval.txt'
 VOC_2012_trainval_image_set_filename = '../SSD300 training data/VOCtrainval2012/VOCdevkit/VOC2012/ImageSets/Main/trainval.txt'
 VOC_2007_test_image_set_filename     = '../SSD300 training data/VOCtest2007/VOCdevkit/VOC2007/ImageSets/Main/test.txt'
+'''
 
+# For Cone data set
+
+# The directories that contain the images.
+train_images_path = '../ConeData/images/train'
+validation_images_path = '../ConeData/images/validation'
+test_images_path = '../ConeData/images/test'
+
+# The paths to the image sets.
+train_setFileName = '../ConeData/train_set_filename.txt'
+validation_setFileName = '../ConeData/validation_set_filename.txt'
+test_setFileName = '../ConeData/test_set_filename.txt'
+
+# The directories that contain the annotations.
+train_annotations_path = '../ConeData/annotations/train'
+validation_annotations_path = '../ConeData/annotations/validation'
+test_annotations_path = '../ConeData/annotations/test'
+
+'''
 # The XML parser needs to now what object class names to look for and in which order to map them to integers.
 classes = ['background',
            'aeroplane', 'bicycle', 'bird', 'boat',
@@ -220,22 +238,21 @@ classes = ['background',
            'chair', 'cow', 'diningtable', 'dog',
            'horse', 'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor']
+'''
+classes = ['background', 'Cone']
 
-train_dataset.parse_xml(images_dirs=[VOC_2007_images_dir,
-                                     VOC_2012_images_dir],
-                        image_set_filenames=[VOC_2007_trainval_image_set_filename,
-                                             VOC_2012_trainval_image_set_filename],
-                        annotations_dirs=[VOC_2007_annotations_dir,
-                                          VOC_2012_annotations_dir],
+train_dataset.parse_xml(images_dirs=[train_images_path],
+                        image_set_filenames=[train_setFileName],
+                        annotations_dirs=[train_annotations_path],
                         classes=classes,
                         include_classes='all',
                         exclude_truncated=False,
                         exclude_difficult=False,
                         ret=False)
 
-val_dataset.parse_xml(images_dirs=[VOC_2007_images_dir],
-                      image_set_filenames=[VOC_2007_val_image_set_filename],
-                      annotations_dirs=[VOC_2007_annotations_dir],
+val_dataset.parse_xml(images_dirs=[validation_images_path],
+                      image_set_filenames=[validation_setFileName],
+                      annotations_dirs=[validation_annotations_path],
                       classes=classes,
                       include_classes='all',
                       exclude_truncated=False,
@@ -247,15 +264,17 @@ val_dataset.parse_xml(images_dirs=[VOC_2007_images_dir],
 # option in the constructor, because in that cas the images are in memory already anyway. If you don't
 # want to create HDF5 datasets, comment out the subsequent two function calls.
 
-train_dataset.create_hdf5_dataset(file_path='dataset_pascal_voc_07+12_trainval.h5',
+
+train_dataset.create_hdf5_dataset(file_path='../ConeData/dataset_cones_train.h5',
                                   resize=False,
                                   variable_image_size=True,
                                   verbose=True)
 
-val_dataset.create_hdf5_dataset(file_path='dataset_pascal_voc_07_test.h5',
+val_dataset.create_hdf5_dataset(file_path='../ConeData/dataset_cones_validation.h5',
                                 resize=False,
                                 variable_image_size=True,
                                 verbose=True)
+
 
 
 # In[6]:
@@ -263,7 +282,7 @@ val_dataset.create_hdf5_dataset(file_path='dataset_pascal_voc_07_test.h5',
 
 # 3: Set the batch size.
 
-batch_size = 5  # 32 # Change the batch size if you like, or if you run into GPU memory issues.
+batch_size = 8  # 32 # Change the batch size if you like, or if you run into GPU memory issues.
 
 # 4: Set the image transformations for pre-processing and data augmentation options.
 
@@ -355,7 +374,7 @@ def lr_schedule(epoch):
 # Define model callbacks.
 
 # TODO: Set the filepath under which you want to save the model.
-model_checkpoint = ModelCheckpoint(filepath='ssd300_pascal_07+12_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
+model_checkpoint = ModelCheckpoint(filepath='../ConeData/ssd300_cone_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
                                    monitor='val_loss',
                                    verbose=1,
                                    save_best_only=True,
@@ -364,7 +383,7 @@ model_checkpoint = ModelCheckpoint(filepath='ssd300_pascal_07+12_epoch-{epoch:02
                                    period=1)
 #model_checkpoint.best = 
 
-csv_logger = CSVLogger(filename='ssd300_pascal_07+12_training_log.csv',
+csv_logger = CSVLogger(filename='../ConeData/ssd300_cone_training_log.csv',
                        separator=',',
                        append=True)
 
