@@ -13,13 +13,11 @@
 
 from math import ceil
 
-import matplotlib
 import numpy as np
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler, TerminateOnNaN, CSVLogger
 from keras.optimizers import Adam
 
-matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
 from models.keras_ssd300 import ssd_300
@@ -103,7 +101,7 @@ K.clear_session() # Clear previous models from memory.
 model = ssd_300(image_size=(img_height, img_width, img_channels),
                 n_classes=n_classes,
                 mode='training',
-                l2_regularization=0.0005,
+                l2_regularization=0.00005,  # 0.0005
                 scales=scales,
                 aspect_ratios_per_layer=aspect_ratios,
                 two_boxes_for_ar1=two_boxes_for_ar1,
@@ -126,7 +124,7 @@ model.load_weights(weights_path, by_name=True)
 #    If you want to follow the original Caffe implementation, use the preset SGD
 #    optimizer, otherwise I'd recommend the commented-out Adam optimizer.
 
-adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+adam = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0) # lr = 0.001
 # sgd = SGD(lr=0.001, momentum=0.9, decay=0.0, nesterov=False)
 
 ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
@@ -282,7 +280,7 @@ val_dataset.create_hdf5_dataset(file_path='../ConeData/dataset_cones_validation.
 
 # 3: Set the batch size.
 
-batch_size = 8  # 32 # Change the batch size if you like, or if you run into GPU memory issues.
+batch_size = 5 # 32 # Change the batch size if you like, or if you run into GPU memory issues.
 
 # 4: Set the image transformations for pre-processing and data augmentation options.
 
@@ -358,7 +356,7 @@ print("Number of images in the validation dataset:\t{:>6}".format(val_dataset_si
 
 
 # Define a learning rate schedule.
-
+'''
 def lr_schedule(epoch):
     if epoch < 80:
         return 0.001
@@ -366,6 +364,14 @@ def lr_schedule(epoch):
         return 0.0001
     else:
         return 0.00001
+'''
+def lr_schedule(epoch):
+    if epoch < 80:
+        return 0.0001
+    elif epoch < 100:
+        return 0.00001
+    else:
+        return 0.000001
 
 
 # In[ ]:
@@ -374,7 +380,7 @@ def lr_schedule(epoch):
 # Define model callbacks.
 
 # TODO: Set the filepath under which you want to save the model.
-model_checkpoint = ModelCheckpoint(filepath='../ConeData/ssd300_cone_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
+model_checkpoint = ModelCheckpoint(filepath='../ConeData/SavedModels/ssd300_cone_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
                                    monitor='val_loss',
                                    verbose=1,
                                    save_best_only=True,
@@ -412,8 +418,8 @@ callbacks = [model_checkpoint,
 
 # If you're resuming a previous training, set `initial_epoch` and `final_epoch` accordingly.
 initial_epoch   = 0
-final_epoch     = 20 # 120
-steps_per_epoch = 1000
+final_epoch     = 5  # 120
+steps_per_epoch = 5  # 1000
 
 history = model.fit_generator(generator=train_generator,
                               steps_per_epoch=steps_per_epoch,
@@ -515,12 +521,16 @@ print(y_pred_decoded_inv[i])
 
 # Set the colors for the bounding boxes
 colors = plt.cm.hsv(np.linspace(0, 1, n_classes+1)).tolist()
+'''
 classes = ['background',
            'aeroplane', 'bicycle', 'bird', 'boat',
            'bottle', 'bus', 'car', 'cat',
            'chair', 'cow', 'diningtable', 'dog',
            'horse', 'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor']
+
+'''
+classes = ['background', 'Cone']
 
 plt.figure(figsize=(20,12))
 plt.imshow(batch_original_images[i])
@@ -546,3 +556,4 @@ for box in y_pred_decoded_inv[i]:
     current_axis.add_patch(plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin, color=color, fill=False, linewidth=2))  
     current_axis.text(xmin, ymin, label, size='x-large', color='white', bbox={'facecolor':color, 'alpha':1.0})
 
+plt.show()
