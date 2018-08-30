@@ -32,6 +32,9 @@ label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
 
+gpu_options = tflow.GPUOptions(per_process_gpu_memory_fraction=0.4)
+#config=tflow.ConfigProto(gpu_options=gpu_options)
+
 def mainLoop():
     # Try the following videos: 
     # 20180619_175221224    # shade to brightness
@@ -45,7 +48,8 @@ def mainLoop():
     img_number = 1000
 
     with detection_graph.as_default():
-        with tflow.Session(graph=detection_graph) as sess:
+        #with tflow.Session(graph=detection_graph) as sess:
+        with tflow.Session(graph=detection_graph, config=tflow.ConfigProto(gpu_options=gpu_options)) as sess:
             while count < frameCount:
                 ret, image_np = cap.read()
                 if ret == True:

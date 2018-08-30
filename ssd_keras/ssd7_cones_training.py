@@ -56,8 +56,8 @@ from data_generator.data_augmentation_chain_original_ssd import SSDDataAugmentat
 # In[4]:
 
 
-img_height = 720 # Height of the input images
-img_width = 1280 # Width of the input images
+img_height = 300 # Height of the input images
+img_width = 480 # Width of the input images
 img_channels = 3 # Number of color channels of the input images
 intensity_mean = 127.5 # Set this to your preference (maybe `None`). The current settings transform the input pixel values to the interval `[-1,1]`.
 intensity_range = 127.5 # Set this to your preference (maybe `None`). The current settings transform the input pixel values to the interval `[-1,1]`.
@@ -112,7 +112,7 @@ model = build_model(image_size=(img_height, img_width, img_channels),
 
 # 2: Optional: Load some weights
 
-#model.load_weights('./ssd7_weights.h5', by_name=True)
+#model.load_weights('../udacity_data/SavedModels/training2/ssd7_epoch-24_loss-1.9609_val_loss-2.1437.h5', by_name=True)
 
 # 3: Instantiate an Adam optimizer and the SSD loss function and compile the model
 
@@ -135,7 +135,7 @@ model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 
 '''
 # TODO: Set the path to the `.h5` file of the model to be loaded.
-model_path = 'ssd7.h5'
+model_path = '../udacity_data/SavedModels/training2/ssd7_epoch-24_loss-1.9609_val_loss-2.1437.h5'
 
 # We need to create an SSDLoss object in order to pass that to the model loader.
 ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
@@ -179,19 +179,31 @@ val_dataset = DataGenerator(load_images_into_memory=False, hdf5_dataset_path=Non
 # TODO: Set the paths to your dataset here.
 
 # [Ajinkya]: Images
-training_images_dir = '../ConeData/images/train'
-validation_images_dir = '../ConeData/images/validation'
-test_images_dir = '../ConeData/images/test'
+# training_images_dir = '../ConeData/images/train'
+# validation_images_dir = '../ConeData/images/validation'
+# test_images_dir = '../ConeData/images/test'
+# # [Ajinkya]: XMLs
+# training_annotation_dir = '../ConeData/annotations/train'
+# validation_annotation_dir = '../ConeData/annotations/validation'
+# test_annotation_dir = '../ConeData/annotations/test'
+
+# # [Ajinkya]: txt
+# training_set_filename = '../ConeData/train_set_filename.txt'
+# validation_set_filename = '../ConeData/validation_set_filename.txt'
+# test_set_filename = '../ConeData/test_set_filename.txt'
+
+training_images_dir = '../ConeData/dataset/imgs/train'
+#validation_images_dir = '../ConeData/images/validation'
+test_images_dir = '../ConeData/dataset/imgs/test'
 # [Ajinkya]: XMLs
-training_annotation_dir = '../ConeData/annotations/train'
-validation_annotation_dir = '../ConeData/annotations/validation'
-test_annotation_dir = '../ConeData/annotations/test'
+training_annotation_dir = '../ConeData/dataset/notations/train'
+#validation_annotation_dir = '../ConeData/annotations/validation'
+test_annotation_dir = '../ConeData/dataset/notations/test'
 
 # [Ajinkya]: txt
-training_set_filename = '../ConeData/train_set_filename.txt'
-validation_set_filename = '../ConeData/validation_set_filename.txt'
-test_set_filename = '../ConeData/test_set_filename.txt'
-
+training_set_filename = '../ConeData/dataset/train_set_filename.txt'
+#validation_set_filename = '../ConeData/validation_set_filename.txt'
+test_set_filename = '../ConeData/dataset/test_set_filename.txt'
 
 # Ground truth
 # train_labels_filename = '../../datasets/udacity_driving_datasets/labels_train.csv'
@@ -209,10 +221,10 @@ test_set_filename = '../ConeData/test_set_filename.txt'
 
 # [Ajinkya]: Using the XML parser instead
 
-train_dataset.parse_xml(images_dirs=[training_images_dir, validation_images_dir],
-                       image_set_filenames=[training_set_filename, validation_set_filename],
-                       annotations_dirs=[training_annotation_dir, validation_annotation_dir],
-                       classes=['background', 'Cone'],
+train_dataset.parse_xml(images_dirs=[training_images_dir],
+                       image_set_filenames=[training_set_filename],
+                       annotations_dirs=[training_annotation_dir],
+                       classes=['background', 'cone'],
                        include_classes='all',
                        exclude_truncated=False,
                        exclude_difficult=False,
@@ -222,7 +234,7 @@ train_dataset.parse_xml(images_dirs=[training_images_dir, validation_images_dir]
 val_dataset.parse_xml(images_dirs=[test_images_dir],
                        image_set_filenames=[test_set_filename],
                        annotations_dirs=[test_annotation_dir],
-                       classes=['background', 'Cone'],
+                       classes=['background', 'cone'],
                        include_classes='all',
                        exclude_truncated=False,
                        exclude_difficult=False,
@@ -260,7 +272,7 @@ print("Number of images in the validation dataset:\t{:>6}".format(val_dataset_si
 
 # 3: Set the batch size.
 
-batch_size = 4
+batch_size = 8
 
 # 4: Define the image processing chain.
 
@@ -334,7 +346,7 @@ val_generator = val_dataset.generate(batch_size=batch_size,
 # Define model callbacks.
 
 # TODO: Set the filepath under which you want to save the weights.
-model_checkpoint = ModelCheckpoint(filepath='../ConeData/SavedModels/training2/(ssd7_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
+model_checkpoint = ModelCheckpoint(filepath='../ConeData/SavedModels/training3/(ssd7_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
                                    monitor='val_loss',
                                    verbose=1,
                                    save_best_only=True,
@@ -342,7 +354,7 @@ model_checkpoint = ModelCheckpoint(filepath='../ConeData/SavedModels/training2/(
                                    mode='auto',
                                    period=1)
 
-csv_logger = CSVLogger(filename='../ConeData/SavedModels/training2/ssd7_training_log.csv',
+csv_logger = CSVLogger(filename='../ConeData/SavedModels/training3/ssd7_training_log.csv',
                        separator=',',
                        append=True)
 
@@ -380,7 +392,7 @@ callbacks = [model_checkpoint,
 # TODO: Set the epochs to train for.
 # If you're resuming a previous training, set `initial_epoch` and `final_epoch` accordingly.
 initial_epoch   = 0
-final_epoch     = 30
+final_epoch     = 10
 steps_per_epoch = 1000
 
 history = model.fit_generator(generator=train_generator,

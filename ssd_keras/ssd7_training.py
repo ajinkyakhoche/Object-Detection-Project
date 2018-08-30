@@ -20,8 +20,6 @@ from keras import backend as K
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, CSVLogger
 from keras.optimizers import Adam
 from keras_loss_function.keras_ssd_loss import SSDLoss
-import matplotlib
-matplotlib.use('agg')
 from matplotlib import pyplot as plt
 from models.keras_ssd7 import build_model
 from ssd_encoder_decoder.ssd_input_encoder import SSDInputEncoder
@@ -173,76 +171,52 @@ val_dataset = DataGenerator(load_images_into_memory=False, hdf5_dataset_path=Non
 
 # TODO: Set the paths to your dataset here.
 
-# Images
-# [Ajinkya]: add training and validation set for xml
+# For Cone data set
 
-images_dir = "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/JPEGImages"  # Conecase: "../images"
-training_set_filename = "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/ImageSets/Layout/train.txt"  # Conecase: "../training_set_filename.txt"
-validation_set_filename =  "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/ImageSets/Layout/val.txt"  # Conecase: "../validation_set_filename.txt"
-annotation_dir = "../VOCtrainval_06-Nov-2007/VOCdevkit/VOC2007/Annotations" # Conecase:"../training_annotations"
+# The directories that contain the images.
+train_images_path = '../ConeData/resized_images/train'
+validation_images_path = '../ConeData/resized_images/validation'
+test_images_path = '../ConeData/resized_images/test'
 
-# Ground truth
-# train_labels_filename = '../../datasets/udacity_driving_datasets/labels_train.csv'
-# val_labels_filename   = '../../datasets/udacity_driving_datasets/labels_val.csv'
+# The paths to the image sets.
+train_setFileName = '../ConeData/train_set_filename.txt'
+validation_setFileName = '../ConeData/validation_set_filename.txt'
+test_setFileName = '../ConeData/test_set_filename.txt'
 
-# train_dataset.parse_csv(images_dir=images_dir,
-#                        labels_filename=train_labels_filename,
-#                        input_format=['image_name', 'xmin', 'xmax', 'ymin', 'ymax', 'class_id'], # This is the order of the first six columns in the CSV file that contains the labels for your dataset. If your labels are in XML format, maybe the XML parser will be helpful, check the documentation.
-#                        include_classes='all')
+# The directories that contain the annotations.
+train_annotations_path = '../ConeData/annotations/train'
+validation_annotations_path = '../ConeData/annotations/validation'
+test_annotations_path = '../ConeData/annotations/test'
 
-# val_dataset.parse_csv(images_dir=images_dir,
-#                      labels_filename=val_labels_filename,
-#                      input_format=['image_name', 'xmin', 'xmax', 'ymin', 'ymax', 'class_id'],
-#                      include_classes='all')
 
+'''
 classes = ['background',
            'aeroplane', 'bicycle', 'bird', 'boat',
            'bottle', 'bus', 'car', 'cat',
            'chair', 'cow', 'diningtable', 'dog',
            'horse', 'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor']
-
-train_dataset.parse_xml(images_dirs=[images_dir],
-                  image_set_filenames=[training_set_filename],
-                  annotations_dirs=[annotation_dir],
-                  classes=classes,
-                  include_classes='all',
-                  exclude_truncated=False,
-                  exclude_difficult=True,
-                  ret=False)
-
-val_dataset.parse_xml(images_dirs=[images_dir],
-                  image_set_filenames=[validation_set_filename],
-                  annotations_dirs=[annotation_dir],
-                  classes=classes,
-                  include_classes='all',
-                  exclude_truncated=False,
-                  exclude_difficult=True,
-                  ret=False)
-
 '''
-Conecase:
-# [Ajinkya]: Using the XML parser instead
-train_dataset.parse_xml(images_dirs=[images_dir],
-                       image_set_filenames=[training_set_filename],
-                       annotations_dirs=[annotation_dir],
-                       classes=['background', 'Cone'],
-                       include_classes='all',
-                       exclude_truncated=False,
-                       exclude_difficult=False,
-                       ret=False,
-                       verbose=True)
+classes = ['background', 'Cone']
 
-val_dataset.parse_xml(images_dirs=[images_dir],
-                       image_set_filenames=[validation_set_filename],
-                       annotations_dirs=[annotation_dir],
-                       classes=['background', 'Cone'],
-                       include_classes='all',
-                       exclude_truncated=False,
-                       exclude_difficult=False,
-                       ret=False,
-                       verbose=True)
-'''
+train_dataset.parse_xml(images_dirs=[train_images_path],
+                        image_set_filenames=[train_setFileName],
+                        annotations_dirs=[train_annotations_path],
+                        classes=classes,
+                        include_classes='all',
+                        exclude_truncated=False,
+                        exclude_difficult=False,
+                        ret=False)
+
+val_dataset.parse_xml(images_dirs=[validation_images_path],
+                      image_set_filenames=[validation_setFileName],
+                      annotations_dirs=[validation_annotations_path],
+                      classes=classes,
+                      include_classes='all',
+                      exclude_truncated=False,
+                      exclude_difficult=True,
+                      ret=False)
+
 
 # Optional: Convert the dataset into an HDF5 dataset. This will require more disk space, but will
 # speed up the training. Doing this is not relevant in case you activated the `load_images_into_memory`
@@ -272,7 +246,7 @@ print("Number of images in the validation dataset:\t{:>6}".format(val_dataset_si
 
 # 3: Set the batch size.
 
-batch_size = 16
+batch_size = 2
 
 # 4: Define the image processing chain.
 
@@ -346,8 +320,7 @@ val_generator = val_dataset.generate(batch_size=batch_size,
 # Define model callbacks.
 
 # TODO: Set the filepath under which you want to save the weights.
-weightPath = "../weightVoc"
-model_checkpoint = ModelCheckpoint(filepath=str(weightPath+'ssd7_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5'),
+model_checkpoint = ModelCheckpoint(filepath='../ConeData/SavedModels/ssd7_cone_epoch-{epoch:02d}_loss-{loss:.4f}_val_loss-{val_loss:.4f}.h5',
                                    monitor='val_loss',
                                    verbose=1,
                                    save_best_only=True,
@@ -355,9 +328,10 @@ model_checkpoint = ModelCheckpoint(filepath=str(weightPath+'ssd7_epoch-{epoch:02
                                    mode='auto',
                                    period=1)
 
-csv_logger = CSVLogger(filename=str(weightPath+'ssd7_training_log.csv'),
+csv_logger = CSVLogger(filename='../ConeData/ss7_cone_training_log.csv',
                        separator=',',
                        append=True)
+
 
 early_stopping = EarlyStopping(monitor='val_loss',
                                min_delta=0.0,
@@ -393,8 +367,8 @@ callbacks = [model_checkpoint,
 # TODO: Set the epochs to train for.
 # If you're resuming a previous training, set `initial_epoch` and `final_epoch` accordingly.
 initial_epoch   = 0
-final_epoch     = 20
-steps_per_epoch = 1000
+final_epoch     = 5
+steps_per_epoch = 4
 
 history = model.fit_generator(generator=train_generator,
                               steps_per_epoch=steps_per_epoch,
@@ -500,8 +474,8 @@ plt.imshow(batch_images[i])
 current_axis = plt.gca()
 
 colors = plt.cm.hsv(np.linspace(0, 1, n_classes+1)).tolist() # Set the colors for the bounding boxes
-classes = ['background', 'car', 'truck', 'pedestrian', 'bicyclist', 'light'] # Just so we can print class names onto the image instead of IDs
-
+#classes = ['background', 'car', 'truck', 'pedestrian', 'bicyclist', 'light'] # Just so we can print class names onto the image instead of IDs
+classes = ['background', 'Cone']
 # Draw the ground truth boxes in green (omit the label for more clarity)
 for box in batch_labels[i]:
     xmin = box[1]

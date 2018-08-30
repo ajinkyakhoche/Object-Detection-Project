@@ -100,7 +100,7 @@ model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 
 
 # TODO: Set the path to the `.h5` file of the model to be loaded.
-model_path = '../ConeData/SavedModels/training2/(ssd7_epoch-25_loss-1.8526_val_loss-1.0722.h5'
+model_path = '../ConeData/SavedModels/ssd7_cone_epoch-01_loss-34.1011_val_loss-26.3043.h5'
 
 # We need to create an SSDLoss object in order to pass that to the model loader.
 ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
@@ -119,7 +119,6 @@ model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
 # In[4]:
 
 image_path = "../ConeData/images/test/"
-#image_path = '../road1.jpg'
 
 files = [int(item.replace('.jpg', '')) for item in os.listdir(image_path)]
 files.sort()
@@ -335,4 +334,3 @@ for box in y_pred_thresh_inv[i]:
 '''
 
 plt.show()
-

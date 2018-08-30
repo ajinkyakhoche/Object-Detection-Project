@@ -20,8 +20,14 @@ from keras.optimizers import Adam
 
 from matplotlib import pyplot as plt
 
+from keras.models import load_model
 from models.keras_ssd300 import ssd_300
 from keras_loss_function.keras_ssd_loss import SSDLoss
+from keras_layers.keras_layer_AnchorBoxes import AnchorBoxes
+from keras_layers.keras_layer_DecodeDetections import DecodeDetections
+from keras_layers.keras_layer_DecodeDetectionsFast import DecodeDetectionsFast
+from keras_layers.keras_layer_L2Normalization import L2Normalization
+
 
 from ssd_encoder_decoder.ssd_input_encoder import SSDInputEncoder
 from ssd_encoder_decoder.ssd_output_decoder import decode_detections
@@ -40,11 +46,11 @@ from data_generator.object_detection_2d_misc_utils import apply_inverse_transfor
 # All places in the code where you need to make any changes are marked `TODO` and explained accordingly. All code cells that don't contain `TODO` markers just need to be executed.
 
 # ## 1. Set the model configuration parameters
-# 
+#
 # This section sets the configuration parameters for the model definition. The parameters set here are being used both by the `ssd_300()` function that builds the SSD300 model as well as further down by the constructor for the `SSDInputEncoder` object that is needed to run the training. Most of these parameters are needed to define the anchor boxes.
-# 
+#
 # The parameters as set below produce the original SSD300 architecture that was trained on the Pascal VOC datsets, i.e. they are all chosen to correspond exactly to their respective counterparts in the `.prototxt` file that defines the original Caffe implementation. Note that the anchor box scaling factors of the original SSD implementation vary depending on the datasets on which the models were trained. The scaling factors used for the MS COCO datasets are smaller than the scaling factors used for the Pascal VOC datasets. The reason why the list of scaling factors has 7 elements while there are only 6 predictor layers is that the last scaling factor is used for the second aspect-ratio-1 box of the last predictor layer. Refer to the documentation for details.
-# 
+#
 # As mentioned above, the parameters set below are not only needed to build the model, but are also passed to the `SSDInputEncoder` constructor further down, which is responsible for matching and encoding ground truth boxes and anchor boxes during the training. In order to do that, it needs to know the anchor box parameters.
 
 # In[2]:
@@ -77,6 +83,7 @@ normalize_coords = True
 #
 # You will want to execute either of the two code cells in the subsequent two sub-sections, not both.
 
+'''
 # ### 2.1 Create a new model and load trained VGG-16 weights into it (or trained SSD weights)
 #
 # If you want to create a new SSD300 model, this is the relevant section for you. If you want to load a previously saved SSD300 model, skip ahead to section 2.2.
@@ -137,16 +144,16 @@ model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 # ### 2.2 Load a previously created model
 #
 # If you have previously created and saved a model and would now like to load it, execute the next code cell. The only thing you need to do here is to set the path to the saved model HDF5 file that you would like to load.
-# 
+#
 # The SSD model contains custom objects: Neither the loss function nor the anchor box or L2-normalization layer types are contained in the Keras core library, so we need to provide them to the model loader.
-# 
+#
 # This next code cell assumes that you want to load a model that was created in 'training' mode. If you want to load a model that was created in 'inference' or 'inference_fast' mode, you'll have to add the `DecodeDetections` or `DecodeDetectionsFast` layer type to the `custom_objects` dictionary below.
 
 # In[ ]:
 
 
 # TODO: Set the path to the `.h5` file of the model to be loaded.
-model_path = 'path/to/trained/model.h5'
+model_path = '../ConeData/SavedModels/ssd300_cone_epoch-05_loss-15.5542_val_loss-11.1109.h5'
 
 # We need to create an SSDLoss object in order to pass that to the model loader.
 ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
@@ -158,7 +165,6 @@ model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
                                                'compute_loss': ssd_loss.compute_loss})
 
 
-'''
 # ## 3. Set up the data generators for the training
 #
 # The code cells below set up the data generators for the training and validation datasets to train the model. The settings below reproduce the original SSD training on Pascal VOC 2007 `trainval` plus 2012 `trainval` and validation on Pascal VOC 2007 `test`.
@@ -419,7 +425,7 @@ callbacks = [model_checkpoint,
 # If you're resuming a previous training, set `initial_epoch` and `final_epoch` accordingly.
 initial_epoch   = 0
 final_epoch     = 5  # 120
-steps_per_epoch = 5  # 1000
+steps_per_epoch = 20  # 1000
 
 history = model.fit_generator(generator=train_generator,
                               steps_per_epoch=steps_per_epoch,
@@ -461,7 +467,7 @@ predict_generator = val_dataset.generate(batch_size=1,
 
 batch_images, batch_filenames, batch_inverse_transforms, batch_original_images, batch_original_labels = next(predict_generator)
 
-i = 0 # Which batch item to look at
+i = 5 # Which batch item to look at
 
 print("Image:", batch_filenames[i])
 print()
